@@ -172,7 +172,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <header>
             <div class="logo">⚡ GRAVEDIGGER</div>
             <div class="tagline">The Codebase Necromancer // Kiroween Frankenstein Track</div>
-            <div class="badge">Powered by Git Plumbing + AST Syntax Trees + Kiro Hooks</div>
+            <div class="badge" style="background: rgba(155, 89, 182, 0.3); border-color: #9b59b6; color: #ffffff; font-weight: bold;">
+                BY ADARSH PANICKER
+            </div>
+            <br>
+            <div class="badge" style="margin-top: 6px;">Powered by Git Plumbing + AST Syntax Trees + Kiro Hooks</div>
         </header>
 
         <div class="stats-grid">

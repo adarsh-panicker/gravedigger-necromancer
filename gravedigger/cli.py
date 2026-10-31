@@ -22,8 +22,8 @@ BANNER = f"""{C_PURPLE}
       .---.
      /     \\      {C_BOLD}{C_GREEN}GRAVEDIGGER: THE CODEBASE NECROMANCER{C_RESET}{C_PURPLE}
     | () () |     {C_CYAN}Kiroween Hackathon 2026 // Track: Frankenstein{C_RESET}{C_PURPLE}
-     \\  ^  /      {C_GRAY}Git Archeology + AST Syntax Trees + Kiro Hooks{C_RESET}{C_PURPLE}
-      |||||
+     \\  ^  /      {C_BOLD}{C_PURPLE}By Adarsh Panicker{C_RESET}{C_PURPLE}
+      |||||       {C_GRAY}Git Archeology + AST Syntax Trees + Kiro Hooks{C_RESET}{C_PURPLE}
       |||||       {C_RED}[+] Raking through the repository cemetery...{C_RESET}{C_PURPLE}
     ========={C_RESET}
 """
