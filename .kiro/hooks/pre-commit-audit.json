@@ -1,0 +1,12 @@
+{
+  "name": "gravedigger-pre-commit-guard",
+  "description": "Prevents accidental burial of critical functions and blocks zombie bloat before committing.",
+  "event": "PreCommit",
+  "trigger": {
+    "gitStage": "staged"
+  },
+  "action": {
+    "type": "command",
+    "command": "python -m gravedigger.cli audit --strict"
+  }
+}

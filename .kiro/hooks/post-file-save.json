@@ -1,0 +1,12 @@
+{
+  "name": "gravedigger-post-save-audit",
+  "description": "Scans modified files upon save to detect unreferenced zombie functions or dead code introduction.",
+  "event": "PostFileSave",
+  "trigger": {
+    "filePattern": "**/*.py"
+  },
+  "action": {
+    "type": "command",
+    "command": "python -m gravedigger.cli scan --ast-only"
+  }
+}
