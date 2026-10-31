@@ -59,6 +59,14 @@ class NecromancerEngine:
         out_file_path = os.path.join(self.resurrect_dir, safe_name)
         patch_file_path = os.path.join(self.resurrect_dir, f"{safe_name}.patch")
 
+        # Fetch full historical content if from git, otherwise use snippet
+        full_content = target.content_snippet
+        if self.archeologist.is_git_repo and target.metadata.get("raw_commit"):
+            raw_sha = target.metadata["raw_commit"]
+            git_blob = self.archeologist._run_git(["show", f"{raw_sha}^:{target.path}"])
+            if git_blob:
+                full_content = git_blob
+
         # Generate resurrected source with necromancy header
         resurrected_content = (
             f"# ====================================================================\n"
@@ -68,7 +76,7 @@ class NecromancerEngine:
             f"# Original Author: {target.author}\n"
             f"# Raised by: GraveDigger (Kiroween Necromancer Engine)\n"
             f"# ====================================================================\n\n"
-            f"{target.content_snippet}\n"
+            f"{full_content}\n"
         )
 
         with open(out_file_path, "w", encoding="utf-8") as f:

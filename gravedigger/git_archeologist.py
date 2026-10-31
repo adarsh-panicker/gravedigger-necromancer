@@ -78,12 +78,16 @@ class GitArcheologist:
                     }
             elif line.startswith("delete mode ") and current_meta:
                 # Format: delete mode 100644 path/to/file.py
-                parts = line.split(" ", 4)
-                if len(parts) >= 5:
-                    file_path = parts[4]
-                    # Try to fetch last known content before deletion
+                parts = line.split(" ", 3)
+                if len(parts) >= 4:
+                    file_path = parts[3]
+                    # Filter out python cache files
+                    if "__pycache__" in file_path or file_path.endswith(('.pyc', '.pyo')):
+                        continue
+
+                    # Fetch last known content before deletion
                     content = self._run_git(["show", f"{current_meta['sha']}^:{file_path}"])
-                    snippet = content[:300] if content else "# [Historical blob archived in commit tree]"
+                    snippet = content[:400] if content else "# [Historical blob archived in commit tree]"
 
                     tombstones.append(Tombstone(
                         id=f"tomb_git_{tomb_counter:03d}",
