@@ -1,0 +1,18 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Testing artifacts
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Local build / envs
+.env
+venv/
+.venv/
+env/
+
+# Resurrected output (temporary workspace)
+# Note: Keep .kiro tracked at all times per Kiroween rules!
