@@ -16,3 +16,5 @@ env/
 
 # Resurrected output (temporary workspace)
 # Note: Keep .kiro tracked at all times per Kiroween rules!
+gravedigger_demo.mp4
+*.mp4

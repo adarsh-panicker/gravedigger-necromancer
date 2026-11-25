@@ -122,23 +122,6 @@ python -m gravedigger.cli audit --strict
 
 ---
 
-## 🎬 2-Minute Demo Video Pitch Script (For Adarsh Panicker)
-
-Follow this structure for your video recording:
-
-1. **0:00 - 0:25 (The Pitch & Track):**  
-   *"Hi everyone, I'm Adarsh Panicker, and this is GraveDigger: The Codebase Necromancer, built for the Kiroween Hackathon's Frankenstein Track. We stitched together low-level Git plumbing, AST syntax tree analysis, Kiro agent hooks, and a gothic dashboard into an autonomous codebase resurrection co-pilot."*
-2. **0:25 - 0:55 (Terminal Excavation):**  
-   *Run `python -m gravedigger.cli dig`. Point out the cemetery summary, the tombstone cards for deleted files, and the AST scan catching uncalled zombie functions.*
-3. **0:55 - 1:25 (Web Cemetery Dashboard):**  
-   *Switch to `http://localhost:6660`. Show the interactive cards, click **"⚡ Resurrect Artifact"**, and show the live unified patch generated in `resurrected/`.*
-4. **1:25 - 1:50 (The Kiro Integration):**  
-   *Open VS Code / editor to show the `/.kiro/` directory. Highlight `steering/architecture.md`, the spec files in `specs/`, and the automated lifecycle hooks in `hooks/`.*
-5. **1:50 - 2:00 (Conclusion):**  
-   *"GraveDigger turns your dead code graveyard into a treasure trove of reusable assets. Thank you!"*
-
----
-
 ## ⚖️ License & Attribution
 * **Author:** Adarsh Panicker
 * **License:** [MIT License](LICENSE)
