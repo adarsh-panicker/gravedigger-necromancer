@@ -30,11 +30,11 @@
 2. **Detects Zombie Functions (`ZOMBIE_CODE`):** Parses every Python file's Abstract Syntax Tree (`ast`) to find functions that are defined in the codebase but **never called anywhere**.
 3. **Resurrects Dead Code into Git Patches:** With one click (or CLI command), it recovers the buried code and generates a ready-to-apply unified `.patch` file (`--- /dev/null`, `+++ b/...`) so developers can restore lost utilities cleanly.
 
-### How to Test the Live Web Dashboard
+### How to Test the Live Web Dashboard (Any Repo or Code!)
 1. Open **[https://gravedigger-necromancer.vercel.app/](https://gravedigger-necromancer.vercel.app/)** (no login required).
-2. Inspect the **Summary Metrics** at the top (`Deleted Files Buried`, `Zombie Functions (AST)`, `Abandoned Branches`, `Dead Code LOC Weight`).
-3. Browse the **Tombstone Cards** below — each card shows the file path, author, death date, commit epitaph, and a code snippet.
-4. Click **`⚡ Resurrect Artifact`** on any card. GraveDigger will run `POST /api/resurrect`, restore the artifact, and open a modal displaying the **live unified Git patch** ready for `git apply`.
+2. **Test Any Public GitHub Repository:** Paste any public GitHub URL (e.g. `https://github.com/pallets/flask` or click the quick-try buttons) and click **`⛏️ Excavate GitHub Repo`** to scan its recent deleted commits and Python AST live.
+3. **Test Your Own Python Code:** Click **`📝 Paste Python Code`**, paste any Python snippet, and click **`🧟 Scan Pasted Python Code`** to immediately detect uncalled zombie functions.
+4. **Resurrect Artifacts:** Click **`⚡ Resurrect Artifact`** on any tombstone card to run `POST /api/resurrect` and view the generated **unified Git `.patch`** ready for `git apply`.
 
 > **Note:** On the hosted Vercel serverless environment, `git` history is unavailable so GraveDigger automatically activates its **Cemetery Sandbox Mode** for deleted files while running live AST scans on the repository. To excavate full Git commit history on any real local repository, use the CLI quickstart below.
 

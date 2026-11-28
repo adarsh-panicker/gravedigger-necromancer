@@ -1,9 +1,12 @@
 import os
 import json
+import tempfile
 import webbrowser
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 from .necromancer_engine import NecromancerEngine
+from .github_scanner import GitHubRepoScanner, parse_github_repo, scan_pasted_code
+from .models import ResurrectionResult
 
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="en">
@@ -170,6 +173,98 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         .modal-title { color: var(--accent-green); font-size: 1.4rem; margin-bottom: 12px; }
         .modal-diff { background: #000; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 0.85rem; max-height: 250px; overflow-y: auto; white-space: pre; color: #2ecc71; margin: 15px 0; }
         .btn-close { background: #333; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; float: right; }
+
+        /* Interactive Scanner Bar */
+        .scanner-panel {
+            background: rgba(20, 24, 31, 0.9);
+            border: 1px solid #2f3e46;
+            border-radius: 12px;
+            padding: 18px 20px;
+            margin-bottom: 28px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.45);
+        }
+        .scanner-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .scanner-input {
+            flex: 1;
+            min-width: 260px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            outline: none;
+        }
+        .scanner-input:focus { border-color: var(--accent-green); }
+        .btn-scan {
+            background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan));
+            color: #0b0c10;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 0.92rem;
+        }
+        .btn-scan:hover { opacity: 0.9; }
+        .btn-secondary {
+            background: #232a34;
+            color: #e6edf3;
+            border: 1px solid #3b4654;
+            padding: 10px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.88rem;
+        }
+        .btn-secondary:hover { border-color: var(--accent-green); }
+        .quick-pills {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-top: 12px;
+            font-size: 0.82rem;
+            color: #9aa5b1;
+        }
+        .pill-btn {
+            background: rgba(102, 252, 241, 0.1);
+            color: var(--accent-green);
+            border: 1px solid rgba(102, 252, 241, 0.35);
+            padding: 4px 10px;
+            border-radius: 999px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .pill-btn:hover { background: rgba(102, 252, 241, 0.22); }
+        .paste-box {
+            display: none;
+            margin-top: 14px;
+            border-top: 1px solid #2b323d;
+            padding-top: 14px;
+        }
+        .code-textarea {
+            width: 100%;
+            min-height: 150px;
+            background: #0b0e14;
+            color: #a8dadc;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.86rem;
+            resize: vertical;
+            margin-bottom: 10px;
+        }
+        .scan-status {
+            margin-top: 10px;
+            font-size: 0.86rem;
+            color: #9ecbff;
+        }
     </style>
 </head>
 <body>
@@ -183,6 +278,33 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             <br>
             <div class="badge" style="margin-top: 6px;">Powered by Git Plumbing + AST Syntax Trees + Kiro Hooks</div>
         </header>
+
+        <div class="scanner-panel">
+            <div class="scanner-row">
+                <input id="repo-input" class="scanner-input" type="text" placeholder="Paste any public GitHub repo URL (e.g. https://github.com/pallets/flask) or leave blank for local...">
+                <button class="btn-scan" onclick="scanGitHubRepo()">⛏️ Excavate GitHub Repo</button>
+                <button class="btn-secondary" onclick="togglePasteBox()">📝 Paste Python Code</button>
+            </div>
+            <div class="quick-pills">
+                <span>Try live targets:</span>
+                <button class="pill-btn" onclick="quickScan('pallets/flask')">pallets/flask</button>
+                <button class="pill-btn" onclick="quickScan('psf/requests')">psf/requests</button>
+                <button class="pill-btn" onclick="quickScan('fastapi/fastapi')">fastapi/fastapi</button>
+                <button class="pill-btn" onclick="quickScan('local')">Local GraveDigger</button>
+            </div>
+            <div class="paste-box" id="paste-box">
+                <textarea id="code-input" class="code-textarea">def active_helper(x):
+    return x * 2
+
+def forgotten_zombie_parser(payload):
+    # Legacy parser left behind after v2 migration.
+    return {"parsed": payload}
+
+print(active_helper(21))</textarea>
+                <button class="btn-scan" onclick="scanPastedCode()">🧟 Scan Pasted Python Code</button>
+            </div>
+            <div class="scan-status" id="scan-status">Target: Local GraveDigger Repository</div>
+        </div>
 
         <div class="stats-grid">
             <div class="stat-card" style="border-left-color: var(--tomb-red);">
@@ -222,10 +344,75 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     </div>
 
     <script>
-        async function loadCemetery() {
-            const res = await fetch('/api/graveyard');
-            const data = await res.json();
-            
+        let currentTarget = 'local';
+
+        function togglePasteBox() {
+            const box = document.getElementById('paste-box');
+            box.style.display = box.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function quickScan(target) {
+            if (target === 'local') {
+                document.getElementById('repo-input').value = '';
+                loadCemetery('local');
+            } else {
+                document.getElementById('repo-input').value = 'https://github.com/' + target;
+                scanGitHubRepo();
+            }
+        }
+
+        function scanGitHubRepo() {
+            const val = document.getElementById('repo-input').value.trim();
+            loadCemetery(val || 'local');
+        }
+
+        async function scanPastedCode() {
+            const code = document.getElementById('code-input').value;
+            const status = document.getElementById('scan-status');
+            status.innerText = 'Scanning pasted Python AST for zombie functions...';
+            try {
+                const res = await fetch('/api/scan-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code, filename: 'pasted_snippet.py' })
+                });
+                const data = await res.json();
+                if (data.error) {
+                    status.innerText = 'Error: ' + data.error;
+                    return;
+                }
+                currentTarget = 'custom';
+                renderDashboard(data);
+                status.innerText = 'Target: Custom Pasted Python Code (' + data.total_tombstones + ' tombstones found)';
+            } catch (e) {
+                status.innerText = 'Scan failed: ' + e;
+            }
+        }
+
+        async function loadCemetery(repo = 'local') {
+            const status = document.getElementById('scan-status');
+            status.innerText = repo === 'local'
+                ? 'Excavating Local GraveDigger Repository...'
+                : 'Excavating GitHub repository ' + repo + ' (Git commits + Python AST)...';
+            try {
+                const url = repo && repo !== 'local'
+                    ? '/api/graveyard?repo=' + encodeURIComponent(repo)
+                    : '/api/graveyard';
+                const res = await fetch(url);
+                const data = await res.json();
+                if (data.error) {
+                    status.innerText = 'Error: ' + data.error;
+                    return;
+                }
+                currentTarget = repo || 'local';
+                renderDashboard(data);
+                status.innerText = 'Target: ' + data.repo_path + ' (' + data.total_tombstones + ' tombstones found)';
+            } catch (e) {
+                status.innerText = 'Failed to load cemetery: ' + e;
+            }
+        }
+
+        function renderDashboard(data) {
             document.getElementById('stat-deleted').innerText = data.deleted_files_count;
             document.getElementById('stat-zombies').innerText = data.zombie_functions_count;
             document.getElementById('stat-branches').innerText = data.abandoned_branches_count;
@@ -233,8 +420,15 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
             const container = document.getElementById('tombstones-container');
             container.innerHTML = '';
+            window._tombstoneMap = {};
+
+            if (!data.tombstones || data.tombstones.length === 0) {
+                container.innerHTML = '<div style="color:#aaa; padding:20px;">No dead files or unreferenced zombie functions detected in this target!</div>';
+                return;
+            }
 
             data.tombstones.forEach(t => {
+                window._tombstoneMap[t.id] = { tombstone: t, repo_path: data.repo_path };
                 const card = document.createElement('div');
                 card.className = 'tomb-card';
                 
@@ -266,7 +460,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         }
 
         async function resurrectTombstone(id) {
-            const res = await fetch(`/api/resurrect?id=${id}`, { method: 'POST' });
+            const meta = (window._tombstoneMap && window._tombstoneMap[id]) || {};
+            const res = await fetch(`/api/resurrect?id=${encodeURIComponent(id)}&target=${encodeURIComponent(currentTarget)}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(meta)
+            });
             const data = await res.json();
             
             document.getElementById('modal-msg').innerText = data.message;
@@ -278,7 +477,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             document.getElementById('resurrect-modal').style.display = 'none';
         }
 
-        loadCemetery();
+        loadCemetery('local');
     </script>
 </body>
 </html>
@@ -286,12 +485,19 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
 class GraveyardHandler(BaseHTTPRequestHandler):
     engine: NecromancerEngine = None
+    remote_cache: dict = {}
 
     def _get_engine(self) -> NecromancerEngine:
         if GraveyardHandler.engine is None:
             repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
             GraveyardHandler.engine = NecromancerEngine(repo_root)
         return GraveyardHandler.engine
+
+    def _send_json(self, payload: dict, status: int = 200):
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(payload).encode("utf-8"))
 
     def log_message(self, format, *args):
         # Quiet standard HTTP access logs
@@ -306,25 +512,126 @@ class GraveyardHandler(BaseHTTPRequestHandler):
             self.wfile.write(HTML_TEMPLATE.encode("utf-8"))
 
         elif parsed.path == "/api/graveyard":
-            report = self._get_engine().run_excavation()
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps(report.to_dict()).encode("utf-8"))
+            query = parse_qs(parsed.query)
+            repo_param = query.get("repo", [""])[0].strip()
+            if not repo_param or repo_param == "local":
+                report = self._get_engine().run_excavation()
+                self._send_json(report.to_dict())
+                return
+
+            parsed_repo = parse_github_repo(repo_param)
+            if not parsed_repo:
+                self._send_json({"error": "Invalid GitHub URL. Use format: https://github.com/owner/repo"}, status=400)
+                return
+
+            owner, repo_name = parsed_repo
+            try:
+                report, blobs = GitHubRepoScanner(owner, repo_name).run_excavation()
+                GraveyardHandler.remote_cache[repo_param] = {"report": report, "blobs": blobs}
+                self._send_json(report.to_dict())
+            except Exception as exc:
+                self._send_json({"error": f"Could not scan {owner}/{repo_name}: {exc}"}, status=502)
         else:
             self.send_response(404)
             self.end_headers()
 
     def do_POST(self):
         parsed = urlparse(self.path)
-        if parsed.path == "/api/resurrect":
+        if parsed.path == "/api/scan-code":
+            length = int(self.headers.get("Content-Length", "0"))
+            raw_body = self.rfile.read(length).decode("utf-8", errors="replace") if length > 0 else "{}"
+            try:
+                body = json.loads(raw_body)
+            except json.JSONDecodeError:
+                self._send_json({"error": "Invalid JSON payload"}, status=400)
+                return
+            code = body.get("code", "")
+            filename = body.get("filename", "pasted_snippet.py")
+            if not code.strip():
+                self._send_json({"error": "Please paste Python code to scan."}, status=400)
+                return
+            report, blobs = scan_pasted_code(code, filename=filename)
+            GraveyardHandler.remote_cache["custom"] = {"report": report, "blobs": blobs}
+            self._send_json(report.to_dict())
+
+        elif parsed.path == "/api/resurrect":
             query = parse_qs(parsed.query)
             tombstone_id = query.get("id", [""])[0]
+            target = query.get("target", ["local"])[0]
+
+            length = int(self.headers.get("Content-Length", "0"))
+            body = {}
+            if length > 0:
+                try:
+                    body = json.loads(self.rfile.read(length).decode("utf-8", errors="replace"))
+                except Exception:
+                    body = {}
+
+            if target != "local":
+                tomb_obj = None
+                repo_label = body.get("repo_path", target)
+                raw_src = None
+                if target in GraveyardHandler.remote_cache:
+                    cached = GraveyardHandler.remote_cache[target]
+                    tomb_obj = next((t for t in cached["report"].tombstones if t.id == tombstone_id), None)
+                    if tomb_obj:
+                        raw_src = cached["blobs"].get(tombstone_id, tomb_obj.content_snippet)
+                        repo_label = cached["report"].repo_path
+                elif body.get("tombstone"):
+                    td = body["tombstone"]
+                    from .models import Tombstone
+                    tomb_obj = Tombstone(
+                        id=td.get("id", tombstone_id),
+                        artifact_type=td.get("artifact_type", "ZOMBIE_CODE"),
+                        name=td.get("name", tombstone_id),
+                        path=td.get("path", "recovered.py"),
+                        death_commit=td.get("death_commit", "HEAD"),
+                        author=td.get("author", "Unknown"),
+                        death_date=td.get("death_date", "Unknown"),
+                        cause_of_death=td.get("cause_of_death", ""),
+                        content_snippet=td.get("content_snippet", ""),
+                    )
+                    raw_src = tomb_obj.content_snippet
+
+                if tomb_obj:
+                    resurrected_content = (
+                        f"# ====================================================================\n"
+                        f"# RESURRECTED ARTIFACT: {tomb_obj.name}\n"
+                        f"# Original Path: {tomb_obj.path}\n"
+                        f"# Source: {repo_label}\n"
+                        f"# Raised by: GraveDigger (Kiroween Necromancer Engine)\n"
+                        f"# ====================================================================\n\n"
+                        f"{raw_src}\n"
+                    )
+                    lines = resurrected_content.splitlines()
+                    patch_lines = [
+                        "--- /dev/null",
+                        f"+++ b/{tomb_obj.path}",
+                        f"@@ -0,0 +1,{len(lines)} @@",
+                    ] + [f"+{line}" for line in lines]
+                    patch_text = "\n".join(patch_lines)
+                    out_dir = os.path.join(tempfile.gettempdir(), "gravedigger_resurrected")
+                    os.makedirs(out_dir, exist_ok=True)
+                    safe_name = os.path.basename(tomb_obj.path)
+                    out_path = os.path.join(out_dir, safe_name)
+                    patch_path = os.path.join(out_dir, f"{safe_name}.patch")
+                    with open(out_path, "w", encoding="utf-8") as f:
+                        f.write(resurrected_content)
+                    with open(patch_path, "w", encoding="utf-8") as pf:
+                        pf.write(patch_text)
+                    res = ResurrectionResult(
+                        tombstone_id=tomb_obj.id,
+                        success=True,
+                        resurrected_path=out_path,
+                        patch_path=patch_path,
+                        diff_preview=patch_text[:1000],
+                        message=f"Successfully resurrected '{tomb_obj.name}' from {repo_label}!",
+                    )
+                    self._send_json(res.to_dict())
+                    return
+
             result = self._get_engine().resurrect_tombstone(tombstone_id)
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps(result.to_dict()).encode("utf-8"))
+            self._send_json(result.to_dict())
         else:
             self.send_response(404)
             self.end_headers()
