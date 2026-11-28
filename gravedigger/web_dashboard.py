@@ -25,11 +25,16 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
         body {
-            background-color: var(--bg-color);
+            background-color: #14110b;
             color: var(--text-main);
             padding: 30px 20px;
-            background-image: radial-gradient(#1f2833 1px, transparent 1px);
-            background-size: 24px 24px;
+            min-height: 100vh;
+            background-image:
+                radial-gradient(circle at 12% 18%, rgba(255, 71, 87, 0.38), transparent 45%),
+                radial-gradient(circle at 88% 22%, rgba(46, 213, 115, 0.34), transparent 45%),
+                radial-gradient(circle at 50% 85%, rgba(255, 195, 18, 0.32), transparent 50%),
+                linear-gradient(135deg, #2d0a10 0%, #0d2617 50%, #2b2207 100%);
+            background-attachment: fixed;
         }
         .container { max-width: 1100px; margin: 0 auto; }
         header {
