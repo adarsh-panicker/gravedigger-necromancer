@@ -24,7 +24,7 @@ class ASTGraveyardScanner:
 
         # First pass: Parse AST across all files
         for root, dirs, files in os.walk(self.root_dir):
-            dirs[:] = [d for d in dirs if d not in {'.git', '.kiro', '__pycache__', 'venv', '.venv', 'build', 'dist', 'node_modules', 'resurrected'}]
+            dirs[:] = [d for d in dirs if d not in {'.git', '.kiro', '__pycache__', 'venv', '.venv', 'build', 'dist', 'node_modules', 'resurrected', '_vendor', 'site-packages', '__pypackages__'}]
             
             for file in files:
                 if not file.endswith('.py'):

@@ -15,8 +15,28 @@
 [![Kiroween 2026](https://img.shields.io/badge/Kiroween-Track%20Frankenstein-purple.svg)](https://kiroween.devpost.com/)
 [![Kiro Specs & Hooks](https://img.shields.io/badge/Kiro-Specs%20%26%20Hooks%20Ready-00f5d4.svg)](.kiro/)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Vercel-brightgreen.svg)](https://gravedigger-necromancer.vercel.app/)
+
+### 🌐 **[Launch Live Web Dashboard → gravedigger-necromancer.vercel.app](https://gravedigger-necromancer.vercel.app/)**
 
 </div>
+
+---
+
+## 🎯 What GraveDigger Does (Judge & User Guide)
+
+**GraveDigger** is an automated dead-code archeologist and resurrection tool. When you point it at a software repository, it performs three things:
+1. **Excavates Deleted Files (`DELETED_FILE`):** Mines Git history (`git log --diff-filter=D`) to find files that were previously deleted, who deleted them, when, and why (commit message).
+2. **Detects Zombie Functions (`ZOMBIE_CODE`):** Parses every Python file's Abstract Syntax Tree (`ast`) to find functions that are defined in the codebase but **never called anywhere**.
+3. **Resurrects Dead Code into Git Patches:** With one click (or CLI command), it recovers the buried code and generates a ready-to-apply unified `.patch` file (`--- /dev/null`, `+++ b/...`) so developers can restore lost utilities cleanly.
+
+### How to Test the Live Web Dashboard
+1. Open **[https://gravedigger-necromancer.vercel.app/](https://gravedigger-necromancer.vercel.app/)** (no login required).
+2. Inspect the **Summary Metrics** at the top (`Deleted Files Buried`, `Zombie Functions (AST)`, `Abandoned Branches`, `Dead Code LOC Weight`).
+3. Browse the **Tombstone Cards** below — each card shows the file path, author, death date, commit epitaph, and a code snippet.
+4. Click **`⚡ Resurrect Artifact`** on any card. GraveDigger will run `POST /api/resurrect`, restore the artifact, and open a modal displaying the **live unified Git patch** ready for `git apply`.
+
+> **Note:** On the hosted Vercel serverless environment, `git` history is unavailable so GraveDigger automatically activates its **Cemetery Sandbox Mode** for deleted files while running live AST scans on the repository. To excavate full Git commit history on any real local repository, use the CLI quickstart below.
 
 ---
 
