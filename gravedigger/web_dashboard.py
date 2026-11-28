@@ -282,6 +282,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 class GraveyardHandler(BaseHTTPRequestHandler):
     engine: NecromancerEngine = None
 
+    def _get_engine(self) -> NecromancerEngine:
+        if GraveyardHandler.engine is None:
+            repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+            GraveyardHandler.engine = NecromancerEngine(repo_root)
+        return GraveyardHandler.engine
+
     def log_message(self, format, *args):
         # Quiet standard HTTP access logs
         return
@@ -295,7 +301,7 @@ class GraveyardHandler(BaseHTTPRequestHandler):
             self.wfile.write(HTML_TEMPLATE.encode("utf-8"))
 
         elif parsed.path == "/api/graveyard":
-            report = self.engine.run_excavation()
+            report = self._get_engine().run_excavation()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
@@ -309,7 +315,7 @@ class GraveyardHandler(BaseHTTPRequestHandler):
         if parsed.path == "/api/resurrect":
             query = parse_qs(parsed.query)
             tombstone_id = query.get("id", [""])[0]
-            result = self.engine.resurrect_tombstone(tombstone_id)
+            result = self._get_engine().resurrect_tombstone(tombstone_id)
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
@@ -319,16 +325,20 @@ class GraveyardHandler(BaseHTTPRequestHandler):
             self.end_headers()
 
 def launch_graveyard_server(repo_path: str = ".", port: int = 6660):
+    env_port = os.environ.get("PORT")
+    bind_port = int(env_port) if env_port else port
+    bind_host = "0.0.0.0" if env_port else "127.0.0.1"
     engine = NecromancerEngine(repo_path)
     GraveyardHandler.engine = engine
-    server = HTTPServer(("127.0.0.1", port), GraveyardHandler)
-    url = f"http://127.0.0.1:{port}"
+    server = HTTPServer((bind_host, bind_port), GraveyardHandler)
+    url = f"http://{bind_host}:{bind_port}"
     print(f"\n[+] GraveDigger Cemetery Web Dashboard active at: {url}")
-    print("[+] Press Ctrl+C to close server.\n")
-    try:
-        webbrowser.open(url)
-    except Exception:
-        pass
+    if not env_port:
+        print("[+] Press Ctrl+C to close server.\n")
+        try:
+            webbrowser.open(url)
+        except Exception:
+            pass
     try:
         server.serve_forever()
     except KeyboardInterrupt:

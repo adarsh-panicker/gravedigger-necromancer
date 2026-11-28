@@ -54,7 +54,17 @@ class NecromancerEngine:
                 message=f"Tombstone ID '{tombstone_id}' not found in repository graveyard."
             )
 
-        os.makedirs(self.resurrect_dir, exist_ok=True)
+        try:
+            os.makedirs(self.resurrect_dir, exist_ok=True)
+            # Verify writable (important for read-only serverless environments)
+            test_probe = os.path.join(self.resurrect_dir, ".write_probe")
+            with open(test_probe, "w", encoding="utf-8") as pf:
+                pf.write("")
+            os.remove(test_probe)
+        except OSError:
+            import tempfile
+            self.resurrect_dir = os.path.join(tempfile.gettempdir(), "gravedigger_resurrected")
+            os.makedirs(self.resurrect_dir, exist_ok=True)
         safe_name = os.path.basename(target.path)
         out_file_path = os.path.join(self.resurrect_dir, safe_name)
         patch_file_path = os.path.join(self.resurrect_dir, f"{safe_name}.patch")

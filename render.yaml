@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: gravedigger-necromancer
+    runtime: python
+    plan: free
+    buildCommand: ""
+    startCommand: python -m gravedigger.cli web
